@@ -2,6 +2,22 @@
 QSUB := qsub -V -j y -l ram_free=1G,arch=*64* -cwd -o ../../results/morphtrans/ -e ../../results/morphtrans/ -N
 all:
 	echo please specify a target.
+# m -s tabulate_celex_1
+# tabulate_celex_1
+# tabulate_celex_4
+tabulate_celex_%:
+	LSTMLAYER=$* ; \
+	echo LSTMLAYER=$$LSTMLAYER '    0     1    2     3     4 '; \
+	for task in 13SIA-13SKE  2PIE-13PKE  2PKE-z  rP-pA ; do \
+	  printf '%-12s'  $$task; \
+	  for fold in {0..4}; do \
+	    LSTMDIM=100; \
+	    TRAINITER=30; \
+	    logfile=../../log/morphtrans/model_celex_$${task}_0500_$${fold}_LSTMDIM~$${LSTMDIM}_TRAINITER~$${TRAINITER}_LSTMLAYER~$${LSTMLAYER}.log; \
+	    printf '%.3f ' $$( grep 'Iter 30' $$logfile  | cut -f 5 -d ' ' ); \
+	  done; \
+	echo ; \
+	done; 
 
 all_celex:
 	for LSTMDIM in 100; do \
