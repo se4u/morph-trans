@@ -7,16 +7,15 @@ all:
 # tabulate_celex_4
 tabulate_celex_%:
 	LSTMLAYER=$* ; \
-	echo LSTMLAYER=$$LSTMLAYER '    0     1    2     3     4 '; \
+	echo LSTMLAYER=$$LSTMLAYER '    0     1    2     3     4   average'; \
 	for task in 13SIA-13SKE  2PIE-13PKE  2PKE-z  rP-pA ; do \
 	  printf '%-12s'  $$task; \
 	  for fold in {0..4}; do \
 	    LSTMDIM=100; \
 	    TRAINITER=30; \
 	    logfile=../../log/morphtrans/model_celex_$${task}_0500_$${fold}_LSTMDIM~$${LSTMDIM}_TRAINITER~$${TRAINITER}_LSTMLAYER~$${LSTMLAYER}.log; \
-	    printf '%.3f ' $$( grep 'Iter 30' $$logfile  | cut -f 5 -d ' ' ); \
-	  done; \
-	echo ; \
+	    printf '%.3f\n' $$( grep 'Iter 30' $$logfile  | cut -f 5 -d ' ' ); \
+	  done | awk 'BEGIN{a=0.0; c=0;}{a += $$1; c += 1;; printf "%.3f ", $$1}END{print a/c}'; \
 	done; 
 
 all_celex:
