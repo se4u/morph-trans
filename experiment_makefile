@@ -1,0 +1,35 @@
+.SECONDARY:
+QSUB := qsub -V -j y -l ram_free=1G,arch=*64* -cwd -o ../../results/morphtrans/ -e ../../results/morphtrans/ -N
+all:
+	echo please specify a target.
+
+all_celex:
+	for LSTMDIM in 100; do \
+	for TRAINITER in 30 ; do \
+	for LSTMLAYER in 1 4; do \
+	for task in 13SIA-13SKE  2PIE-13PKE  2PKE-z  rP-pA ; do \
+	for fold in {0..4}; do \
+	    jobname=morphtrans_$${LSTMLAYER}_$${task}_$${fold}; \
+	    modelname=../../results/morphtrans/model_celex_$${task}_0500_$${fold}_LSTMDIM~$${LSTMDIM}_TRAINITER~$${TRAINITER}_LSTMLAYER~$${LSTMLAYER}.txt; \
+	    $(QSUB) $$jobname ./qsub_stub.sh LSTMDIM=$$LSTMDIM TRAINITER=$$TRAINITER LSTMLAYER=$$LSTMLAYER $$modelname ; \
+	done; done; done; done; done
+
+# TARGET: ../../results/morphtrans/celex_13SIA-13SKE_0500_0_LSTMDIM~100_TRAINITER~30_LSTMLAYER~1.txt
+LSTMDIM ?= 100
+TRAINITER ?= 30
+LSTMLAYER ?= 1
+../../results/morphtrans/model_%_LSTMDIM~$(LSTMDIM)_TRAINITER~$(TRAINITER)_LSTMLAYER~$(LSTMLAYER).txt: data/%_train data/%_dev
+	2>&1 ./bin/train-sep-morph data/char_vocab.txt data/morph_vocab_simplified.txt $+ $(LSTMDIM) $(TRAINITER) 1e-5 $(LSTMLAYER) $@ &> ../../log/morphtrans/$(notdir $(basename $@)).log
+
+# TARGET: data/celex_13SIA-13SKE_0500_0_train
+OPT_EXTRACTOR_ = $(word $1,$(subst _, ,$*))
+data/celex_%:
+	../../src/scratch/convert_to_morph_trans_format.py ../../res/celex/$(call OPT_EXTRACTOR_,1)/$(call OPT_EXTRACTOR_,2)/$(call OPT_EXTRACTOR_,3)/$(call OPT_EXTRACTOR_,4) 'case=blah:number=blah' > $@
+
+
+############
+# DESTROY  #
+############
+clean:
+	rm ../../results/morphtrans/* ; \
+	rm ../../log/morphtrans/*
