@@ -1,1 +1,3 @@
 data/celex_*
+bin/
+obj/
