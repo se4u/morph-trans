@@ -1,4 +1,9 @@
 CC=g++
+
+CNN ?= $(HOME)/tools/cnn
+BOOST ?= /usr/lib
+EIGEN ?= $(HOME)/tools/eigen
+
 CNN_DIR=$(CNN)
 EIGEN_DIR=$(EIGEN)
 BOOST_DIR=$(BOOST)

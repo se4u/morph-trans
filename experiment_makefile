@@ -1,50 +1,62 @@
 .SECONDARY:
-QSUB := qsub -V -j y -l ram_free=1G,arch=*64* -cwd -o ../../results/morphtrans/ -e ../../results/morphtrans/ -N
+DEBUG ?= echo
+QSUB := $(DEBUG) qsub -V -j y -l ram_free=1G,arch=*64* -cwd -o ../../results/morphtrans/ -e ../../results/morphtrans/ -N
+RESDIR := ../../results/morphtrans
+LOGDIR := ../../log/morphtrans
 all:
 	echo please specify a target.
 # m -s tabulate_celex_1
 # tabulate_celex_1
 # tabulate_celex_4
-tabulate_celex_%:
-	LSTMLAYER=$* ; \
-	echo LSTMLAYER=$$LSTMLAYER '    0     1    2     3     4   average'; \
+LDIM ?= 25 50 100
+TI ?= 15 30 60
+LL ?= 1 4
+tabulate_celex:
+	for baselinetype in train-sep-morph train-enc-dec train-enc-dec-attn; do \
+	for LSTMDIM in $(LDIM); do \
+	for TRAINITER in $(TI) ; do \
+	for LSTMLAYER in $(LL) ; do \
+	printf '%-20s %-3s %-2s %-2s %s\n' $$baselinetype $$LSTMDIM $$TRAINITER $$LSTMLAYER '    0     1    2     3     4    average'; \
 	for task in 13SIA-13SKE  2PIE-13PKE  2PKE-z  rP-pA ; do \
-	  printf '%-12s'  $$task; \
+	  printf '%-12s' $$task; \
 	  for fold in {0..4}; do \
-	    LSTMDIM=100; \
-	    TRAINITER=30; \
-	    logfile=../../log/morphtrans/model_celex_$${task}_0500_$${fold}_LSTMDIM~$${LSTMDIM}_TRAINITER~$${TRAINITER}_LSTMLAYER~$${LSTMLAYER}.log; \
-	    printf '%.3f\n' $$( grep 'Iter 30' $$logfile  | cut -f 5 -d ' ' ); \
+	    logfile=$(LOGDIR)/model_celex_$${task}_0500_$${fold}_LSTMDIM~$${LSTMDIM}_TRAINITER~$${TRAINITER}_LSTMLAYER~$${LSTMLAYER}.log; \
+	    printf '%.3f\n' $$( grep "Iter $$TRAINITER" $$logfile  | cut -f 5 -d ' ' ); \
 	  done | awk 'BEGIN{a=0.0; c=0;}{a += $$1; c += 1;; printf "%.3f ", $$1}END{print a/c}'; \
-	done; 
+	done; done; done; done
 
 all_celex:
-	for LSTMDIM in 100; do \
-	for TRAINITER in 30 ; do \
+	for baselinetype in train-sep-morph train-enc-dec train-enc-dec-attn; do \
+	for LSTMDIM in 25 50 100; do \
+	for TRAINITER in 100 ; do \
 	for LSTMLAYER in 1 4; do \
 	for task in 13SIA-13SKE  2PIE-13PKE  2PKE-z  rP-pA ; do \
 	for fold in {0..4}; do \
-	    jobname=morphtrans_$${LSTMLAYER}_$${task}_$${fold}; \
-	    modelname=../../results/morphtrans/model_celex_$${task}_0500_$${fold}_LSTMDIM~$${LSTMDIM}_TRAINITER~$${TRAINITER}_LSTMLAYER~$${LSTMLAYER}.txt; \
-	    $(QSUB) $$jobname ./qsub_stub.sh LSTMDIM=$$LSTMDIM TRAINITER=$$TRAINITER LSTMLAYER=$$LSTMLAYER $$modelname ; \
-	done; done; done; done; done
+	    jobname=$${baselinetype}_$${LSTMDIM}_$${TRAINITER}_$${LSTMLAYER}_$${task}_$${fold}; \
+	    input_file=celex_$${task}_0500_$${fold}_LSTMDIM~$${LSTMDIM}_TRAINITER~$${TRAINITER}_LSTMLAYER~$${LSTMLAYER}.txt; \
+	    modelname=$(RESDIR)/$${baselinetype}_$${input_file}; \
+	    $(QSUB) $$jobname ./qsub_stub.sh LSTMDIM=$$LSTMDIM TRAINITER=$$TRAINITER LSTMLAYER=$$LSTMLAYER INPUT_FILE=$$input_file $$modelname ; \
+	done; done; done; done; done; done
 
-# TARGET: ../../results/morphtrans/celex_13SIA-13SKE_0500_0_LSTMDIM~100_TRAINITER~30_LSTMLAYER~1.txt
 LSTMDIM ?= 100
 TRAINITER ?= 30
 LSTMLAYER ?= 1
-../../results/morphtrans/model_%_LSTMDIM~$(LSTMDIM)_TRAINITER~$(TRAINITER)_LSTMLAYER~$(LSTMLAYER).txt: data/%_train data/%_dev
-	2>&1 ./bin/train-sep-morph data/char_vocab.txt data/morph_vocab_simplified.txt $+ $(LSTMDIM) $(TRAINITER) 1e-5 $(LSTMLAYER) $@ &> ../../log/morphtrans/$(notdir $(basename $@)).log
+# TARGET: $(RESDIR)/train-sep-morph_celex_13SIA-13SKE_0500_0_LSTMDIM~100_TRAINITER~30_LSTMLAYER~1.txt
+$(RESDIR)/train-sep-morph_%_LSTMDIM~$(LSTMDIM)_TRAINITER~$(TRAINITER)_LSTMLAYER~$(LSTMLAYER).txt $(RESDIR)/train-enc-dec_%_LSTMDIM~$(LSTMDIM)_TRAINITER~$(TRAINITER)_LSTMLAYER~$(LSTMLAYER).txt $(RESDIR)/train-enc-dec-attn_%_LSTMDIM~$(LSTMDIM)_TRAINITER~$(TRAINITER)_LSTMLAYER~$(LSTMLAYER).txt: data/%_train data/%_dev
+	2>&1 ./bin/$(word 1,$(subst _, ,$(notdir $@))) data/char_vocab.txt data/morph_vocab_simplified.txt $+ $(LSTMDIM) $(TRAINITER) 1e-5 $(LSTMLAYER) $@ &> $(LOGDIR)/$(notdir $(basename $@)).log
 
 # TARGET: data/celex_13SIA-13SKE_0500_0_train
 OPT_EXTRACTOR_ = $(word $1,$(subst _, ,$*))
 data/celex_%:
 	../../src/scratch/convert_to_morph_trans_format.py ../../res/celex/$(call OPT_EXTRACTOR_,1)/$(call OPT_EXTRACTOR_,2)/$(call OPT_EXTRACTOR_,3)/$(call OPT_EXTRACTOR_,4) 'case=blah:number=blah' > $@
 
-
 ############
 # DESTROY  #
 ############
 clean:
-	rm ../../results/morphtrans/* ; \
-	rm ../../log/morphtrans/*
+	$(DEBUG) rm -rf $(RESDIR) ; \
+	$(DEBUG) rm -rf  $(LOGDIR) ;\
+	$(DEBUG) mkdir $(RESDIR) ;\
+	$(DEBUG) mkdir $(LOGDIR)
+# $(DEBUG) mv $(RESDIR) $(RESDIR).bak ;
+# $(DEBUG) mv $(LOGDIR) $(LOGDIR).bak ;
