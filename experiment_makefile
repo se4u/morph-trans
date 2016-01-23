@@ -9,10 +9,19 @@ all:
 # tabulate_celex_1
 # tabulate_celex_4
 LDIM ?= 25 50 100
-TI ?= 15 30 60
+TI ?= 100  # 15 30 60
 LL ?= 1 4
+BTP ?= train-sep-morph train-enc-dec train-enc-dec-attn
+
+
+results:
+	echo sep-morph LSTM LAYER 4; grep  'train-sep-morph     100 100 4' test_all_celex | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_]; printf "%-13s%.3f\n", a, arr[a] / count[a]}}'; \
+	echo sep-morph LSTM LAYER 1; grep  'train-sep-morph     100 100 1' test_all_celex | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_];printf "%-13s%.3f\n", a, arr[a] / count[a]}}'; \
+	echo enc-dec-attn LSTM LAYER 1; grep  'train-enc-dec-attn  100 100 1' test_all_celex | grep train-enc-dec | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_];printf "%-13s%.3f\n", a, arr[a] / count[a]}}'; \
+	echo enc-dec LSTM LAYER 1; grep  'train-enc-dec       100 100 1' test_all_celex | grep train-enc-dec | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_];printf "%-13s%.3f\n", a, arr[a] / count[a]}}'
+
 tabulate_celex:
-	for baselinetype in train-sep-morph train-enc-dec train-enc-dec-attn; do \
+	for baselinetype in $(BTP) ; do \
 	for LSTMDIM in $(LDIM); do \
 	for TRAINITER in $(TI) ; do \
 	for LSTMLAYER in $(LL) ; do \
@@ -20,10 +29,27 @@ tabulate_celex:
 	for task in 13SIA-13SKE  2PIE-13PKE  2PKE-z  rP-pA ; do \
 	  printf '%-12s' $$task; \
 	  for fold in {0..4}; do \
-	    logfile=$(LOGDIR)/model_celex_$${task}_0500_$${fold}_LSTMDIM~$${LSTMDIM}_TRAINITER~$${TRAINITER}_LSTMLAYER~$${LSTMLAYER}.log; \
-	    printf '%.3f\n' $$( grep "Iter $$TRAINITER" $$logfile  | cut -f 5 -d ' ' ); \
+	    logfile=$(LOGDIR)/$${baselinetype}_celex_$${task}_0500_$${fold}_LSTMDIM~$${LSTMDIM}_TRAINITER~$${TRAINITER}_LSTMLAYER~$${LSTMLAYER}.log; \
+	    printf '%.3f\n' $$( grep "Iter $$TRAINITER" $$logfile  | awk '{print $$NF}' ); \
 	  done | awk 'BEGIN{a=0.0; c=0;}{a += $$1; c += 1;; printf "%.3f ", $$1}END{print a/c}'; \
-	done; done; done; done
+	done; done; done; done; done
+
+test_all_celex:
+	for baselinetype in train-sep-morph train-enc-dec train-enc-dec-attn; do \
+	for LSTMDIM in 25 50 100; do \
+	for TRAINITER in 100 ; do \
+	for LSTMLAYER in 1 4; do \
+	for task in 13SIA-13SKE  2PIE-13PKE  2PKE-z  rP-pA ; do \
+	for fold in {0..4}; do \
+	    printf "%-20s%-4s%-4s%-4s%-15s%-4s" $$baselinetype $$LSTMDIM $$TRAINITER $$LSTMLAYER $$task $$fold; \
+	    evaltype=dev; \
+	    evalbin=./bin/eval-ensemble-$${baselinetype#train-}; \
+	    datafile=data/celex_$${task}_0500_$${fold}_$$evaltype; \
+	    modelfile=$(RESDIR)/$${baselinetype}_celex_$${task}_0500_0_LSTMDIM~$${LSTMDIM}_TRAINITER~$${TRAINITER}_LSTMLAYER~$${LSTMLAYER}.txt; \
+	    if [ -e $$modelfile ]; then  \
+	        $$evalbin data/char_vocab.txt data/morph_vocab_simplified.txt $$datafile $$modelfile 2>&1 1> /dev/null | tail -1 | awk '{print $$NF}'; \
+	    else echo $$modelfile does not exist ; fi; \
+	done; done; done; done; done; done
 
 all_celex:
 	for baselinetype in train-sep-morph train-enc-dec train-enc-dec-attn; do \
