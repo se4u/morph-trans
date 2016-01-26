@@ -16,11 +16,12 @@ all:
 	echo please specify a target.
 
 results:
-	for lstmpat in "100 100 1" "100 100 4"; do \
-	  echo $$lstmpat ; \
+	for lstmpat in "100 100 1" "100 100 4" "100 200 1" "100 200 4" "150 200 1" "150 200 4"; do \
+	  printf "%s " $$lstmpat ; \
 	  echo sep-morph ; grep  "train-sep-morph     $$lstmpat" test_all_celex | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_]; printf "%-13s%.3f\n", a, arr[a] / count[a]}}'; \
 	  echo enc-dec-attn ; grep  "train-enc-dec-attn  $$lstmpat" test_all_celex | grep train-enc-dec | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_];printf "%-13s%.3f\n", a, arr[a] / count[a]}}'; \
 	  echo enc-dec ; grep  "train-enc-dec       $$lstmpat" test_all_celex | grep train-enc-dec | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_];printf "%-13s%.3f\n", a, arr[a] / count[a]}}' ; \
+	  echo; \
 	done 
 
 tabulate_celex:
