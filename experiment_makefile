@@ -1,24 +1,27 @@
 .SECONDARY:
-DEBUG ?= echo
+DEBUG ?=
 QSUB := $(DEBUG) qsub -V -j y -l ram_free=1G,arch=*64* -cwd -o ../../results/morphtrans/ -e ../../results/morphtrans/ -N
 RESDIR := ../../results/morphtrans
 LOGDIR := ../../log/morphtrans
-all:
-	echo please specify a target.
-# m -s tabulate_celex_1
-# tabulate_celex_1
-# tabulate_celex_4
-LDIM ?= 25 50 100
-TI ?= 100  # 15 30 60
+LDIM ?= 100 150
+TI ?= 200 
 LL ?= 1 4
 BTP ?= train-sep-morph train-enc-dec train-enc-dec-attn
+# m all_celex
+# m test_all_celex
+# m tabulate_celex
+# m results
 
+all:
+	echo please specify a target.
 
 results:
-	echo sep-morph LSTM LAYER 4; grep  'train-sep-morph     100 100 4' test_all_celex | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_]; printf "%-13s%.3f\n", a, arr[a] / count[a]}}'; \
-	echo sep-morph LSTM LAYER 1; grep  'train-sep-morph     100 100 1' test_all_celex | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_];printf "%-13s%.3f\n", a, arr[a] / count[a]}}'; \
-	echo enc-dec-attn LSTM LAYER 1; grep  'train-enc-dec-attn  100 100 1' test_all_celex | grep train-enc-dec | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_];printf "%-13s%.3f\n", a, arr[a] / count[a]}}'; \
-	echo enc-dec LSTM LAYER 1; grep  'train-enc-dec       100 100 1' test_all_celex | grep train-enc-dec | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_];printf "%-13s%.3f\n", a, arr[a] / count[a]}}'
+	for lstmpat in "100 100 1" "100 100 4"; do \
+	  echo $$lstmpat ; \
+	  echo sep-morph ; grep  "train-sep-morph     $$lstmpat" test_all_celex | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_]; printf "%-13s%.3f\n", a, arr[a] / count[a]}}'; \
+	  echo enc-dec-attn ; grep  "train-enc-dec-attn  $$lstmpat" test_all_celex | grep train-enc-dec | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_];printf "%-13s%.3f\n", a, arr[a] / count[a]}}'; \
+	  echo enc-dec ; grep  "train-enc-dec       $$lstmpat" test_all_celex | grep train-enc-dec | awk 'BEGIN{arr2[0]="13SIA-13SKE";arr2[1]="2PIE-13PKE";arr2[2]="2PKE-z";arr2[3]="rP-pA"}{arr[$$5] += $$NF; count[$$5] += 1}END{for (a_ in arr2) {a=arr2[a_];printf "%-13s%.3f\n", a, arr[a] / count[a]}}' ; \
+	done 
 
 tabulate_celex:
 	for baselinetype in $(BTP) ; do \
@@ -34,11 +37,11 @@ tabulate_celex:
 	  done | awk 'BEGIN{a=0.0; c=0;}{a += $$1; c += 1;; printf "%.3f ", $$1}END{print a/c}'; \
 	done; done; done; done; done
 
-test_all_celex:
-	for baselinetype in train-sep-morph train-enc-dec train-enc-dec-attn; do \
-	for LSTMDIM in 25 50 100; do \
-	for TRAINITER in 100 ; do \
-	for LSTMLAYER in 1 4; do \
+test_all_celex: 
+	for baselinetype in $(BTP); do \
+	for LSTMDIM in $(LDIM); do \
+	for TRAINITER in $(TI) ; do \
+	for LSTMLAYER in  $(LL) ; do \
 	for task in 13SIA-13SKE  2PIE-13PKE  2PKE-z  rP-pA ; do \
 	for fold in {0..4}; do \
 	    printf "%-20s%-4s%-4s%-4s%-15s%-4s" $$baselinetype $$LSTMDIM $$TRAINITER $$LSTMLAYER $$task $$fold; \
@@ -51,11 +54,11 @@ test_all_celex:
 	    else echo $$modelfile does not exist ; fi; \
 	done; done; done; done; done; done
 
-all_celex:
-	for baselinetype in train-sep-morph train-enc-dec train-enc-dec-attn; do \
-	for LSTMDIM in 25 50 100; do \
-	for TRAINITER in 100 ; do \
-	for LSTMLAYER in 1 4; do \
+all_celex: 
+	for baselinetype in $(BTP); do \
+	for LSTMDIM in $(LDIM); do \
+	for TRAINITER in $(TI) ; do \
+	for LSTMLAYER in $(LL) ; do \
 	for task in 13SIA-13SKE  2PIE-13PKE  2PKE-z  rP-pA ; do \
 	for fold in {0..4}; do \
 	    jobname=$${baselinetype}_$${LSTMDIM}_$${TRAINITER}_$${LSTMLAYER}_$${task}_$${fold}; \
